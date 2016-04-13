@@ -88,7 +88,7 @@ pol_gen_product(
   uint16_t rndcap = UINT16_MAX - (UINT16_MAX % N); /* assumes N is not power of 2 */
   uint16_t d = 2*((uint16_t)d1 + d2 + d3);
   uint16_t r;
-
+/*
   while(d > 0)
   {
     rng_uint16(&r);
@@ -97,6 +97,63 @@ pol_gen_product(
       *ai++ = r % N;
       --d;
     }
+  }
+*/
+  int error = 0;
+  d = 2*d1;
+  while (d > 0) {
+	  do {
+		  error = 0;
+		  rng_uint16(&r);
+		  if (r < rndcap) {
+			  r %= N;
+			  int i;
+			  for (i=0; i<2*d1-d; i++) {
+				  error |= (r == ai[i]);
+			  }
+		  }
+		  else
+			  error = 1;
+	  } while (error);
+      ai[2*d1-d] = r;
+      --d;
+  }
+  d = 2*d2;
+  while (d > 0) {
+	  do {
+		  error = 0;
+		  rng_uint16(&r);
+		  if (r < rndcap) {
+			  r %= N;
+			  int i;
+			  for (i=0; i<2*(d1+d2)-d; i++) {
+				  error |= (r == ai[2*d1+i]);
+			  }
+		  }
+		  else
+			  error = 1;
+	  } while (error);
+      ai[2*(d1+d2)-d] = r;
+      --d;
+  }
+
+  d = 2*d3;
+  while (d > 0) {
+	  do {
+		  error = 0;
+		  rng_uint16(&r);
+		  if (r < rndcap) {
+			  r %= N;
+			  int i;
+			  for (i=0; i<2*(d1+d2+d3)-d; i++) {
+				  error |= (r == ai[2*(d1+d2)+i]);
+			  }
+		  }
+		  else
+			  error = 1;
+	  } while (error);
+      ai[2*(d1+d2+d3)-d] = r;
+      --d;
   }
 
   return;
@@ -115,14 +172,17 @@ pol_unidrnd_pZ(
     const int8_t     p)
 {
   uint16_t i = 0;
-  uint64_t r = 0;
 
-  int64_t range = q/p;
-  int64_t center = q/(2*p);
+
+//  int64_t range = q/p;
+//  int64_t center = q/(2*p);
+  int64_t center = (q+p-1)/(2*p)-1;
+  int64_t range = 2*center+1;
 
   uint64_t rndcap = (UINT64_MAX - (UINT64_MAX % range));
 
   while(i < N) {
+    uint64_t r = 0;
     rng_uint64(&r);
     if(r < rndcap) {
       v[i] = ((int64_t)(r % range) - center) * p;

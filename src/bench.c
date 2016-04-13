@@ -34,9 +34,12 @@
 #define TRIALS 10000
 #define VERIFY 1
 
-extern int g_loop;
-extern int g_max;
-extern int g_max2;
+//// profiler
+//unsigned long int attempts;
+//double t_prep;
+//double t_dowhile;
+//double t_writeback;
+//extern int numBlocks;
 
 int bench_param_set(PQ_PARAM_SET_ID id);
 
@@ -45,18 +48,21 @@ main(int argc, char **argv)
 {
   uint16_t i;
   PQ_PARAM_SET_ID plist[] = {
-    DRAFT_401,
-    DRAFT_439,
-    DRAFT_593,
-    DRAFT_743
-    };
+    XXX_20140508_401,
+    XXX_20140508_439,
+    XXX_20140508_593,
+    XXX_20140508_743,
+    XXX_20151024_401,
+    XXX_20151024_443,
+    XXX_20151024_563,
+    XXX_20151024_743,
+    XXX_20151024_907,
+  };
+  
   size_t numParams = sizeof(plist)/sizeof(PQ_PARAM_SET_ID);
 
   for(i = 0; i<numParams; i++)
   {
-    g_loop = 0;
-    g_max = 0;
-    g_max2 = 0;
     bench_param_set(plist[i]);
   }
 
@@ -95,12 +101,13 @@ bench_param_set(PQ_PARAM_SET_ID id)
     exit(EXIT_FAILURE);
   }
 
-  fprintf(stderr, "Testing parameter set %s. %d trials.\n", P->name, TRIALS);
+  fprintf(stderr, "------ Testing parameter set %s. %d trials. ------\n", P->name, TRIALS);
+  printf("------ Testing parameter set %s. %d trials. ------\n", P->name, TRIALS);
 
   pq_gen_key(P, &privkey_blob_len, NULL, &pubkey_blob_len, NULL);
 
-  //printf("privkey_blob_len: %d\n", (int) privkey_blob_len);
-  //printf("pubkey_blob_len: %d\n", (int) pubkey_blob_len);
+  printf("privkey_blob_len: %d\n", (int) privkey_blob_len);
+  printf("pubkey_blob_len: %d\n", (int) pubkey_blob_len);
 
   privkey_blob = malloc(privkey_blob_len);
   pubkey_blob = malloc(pubkey_blob_len);
@@ -115,27 +122,48 @@ bench_param_set(PQ_PARAM_SET_ID id)
   printf("Time/key: %fs\n", (float) (c1 - c0)/(TRIALS*CLOCKS_PER_SEC));
 
   pq_sign(&packed_sig_len, NULL, privkey_blob_len, privkey_blob, pubkey_blob_len, pubkey_blob, 0, NULL);
-  printf("packed_sig_len %d\n", packed_sig_len);
+//  cuda_pq_sign(&packed_sig_len, NULL, privkey_blob_len, privkey_blob, pubkey_blob_len, pubkey_blob, 0, NULL); // !!!cuda
+  printf("packed_sig_len %d\n", (int)packed_sig_len);
 
   sigs = malloc(TRIALS * packed_sig_len);
 
   memset(msg, 0, 256);
+
   valid = 0;
+//  attempts = 0;
+//  t_prep = 0;
+//  t_dowhile = 0;
+//  t_writeback = 0;
+
+  cuda_prep(id);
+
   c0 = clock();
   for(i=0; i<TRIALS; i++) {
     msg[(i&0xff)]++; /* Hash a different message each time */
-    valid += (PQNTRU_OK == pq_sign(&packed_sig_len, sigs + (i*packed_sig_len),
+/*    valid += (PQNTRU_OK == pq_sign(&packed_sig_len, sigs + (i*packed_sig_len),
                                    privkey_blob_len, privkey_blob,
                                    pubkey_blob_len, pubkey_blob,
                                    msg_len, msg));
+*/ 
+    valid += (PQNTRU_OK == 
+        cuda_pq_sign( &packed_sig_len, sigs + (i*packed_sig_len),
+                      privkey_blob_len,
+                      privkey_blob,
+                      pubkey_blob_len,
+                      pubkey_blob,
+                      msg_len, msg ) ); // !!! cuda
   }
   c1 = clock();
-  printf("Time/signature: %fs\n", (float) (c1 - c0)/(TRIALS*CLOCKS_PER_SEC));
-  printf("Good signatures %d/%d\n", valid, TRIALS);
-  printf("avg loop %f\n", ((float)TRIALS)/g_loop);
-  printf("max |a*f| %d/%d\n", g_max, (int) P->B_s);
-  printf("max |a*g| %d/%d\n", g_max2, (int) P->B_t);
 
+  cuda_clean();
+
+//  printf("Probability of validity: %f\n", (double)valid/attempts);
+  printf("Time/signature: %f msec\n", 1000*(double)(c1 - c0)/(TRIALS*CLOCKS_PER_SEC));
+//  printf("\tInputTime/signature: %f msec\n", t_prep/TRIALS);
+//  printf("\tSigningTime/signature: %f msec\n", t_dowhile/TRIALS);
+//  printf("\t\tSigningTime/attempt: %f msec\n", t_dowhile*numBlocks/attempts);
+//  printf("\tOutputTime/signature: %f msec\n", t_writeback/TRIALS);
+  printf("Good signatures %d/%d\n", valid, TRIALS);
 
   memset(msg, 0, 256);
   valid = 0;

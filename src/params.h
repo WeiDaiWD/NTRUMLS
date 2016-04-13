@@ -22,17 +22,21 @@
 #ifndef CPQREF_PARAMS_H_
 #define CPQREF_PARAMS_H_
 
-typedef enum _PQ_PARAM_SET_ID PQ_PARAM_SET_ID;
-typedef const struct _PQ_PARAM_SET  PQ_PARAM_SET;
-
-
 enum _PQ_PARAM_SET_ID {
-    DRAFT_401,
-    DRAFT_439,
-    DRAFT_593,
-    DRAFT_743,
+    XXX_20140508_401,
+    XXX_20140508_439,
+    XXX_20140508_593,
+    XXX_20140508_743,
+
+    XXX_20151024_401,
+    XXX_20151024_443,
+    XXX_20151024_563,
+    //XXX_20151024_509,
+    XXX_20151024_743,
+    XXX_20151024_907,
 };
 
+typedef enum _PQ_PARAM_SET_ID PQ_PARAM_SET_ID;
 
 struct _PQ_PARAM_SET {
   PQ_PARAM_SET_ID  id;          /* parameter set id */
@@ -51,8 +55,10 @@ struct _PQ_PARAM_SET {
   uint8_t          d2;
   uint8_t          d3;
   uint16_t         padded_N;    /* # Polynomial coefficients for Karatsuba */
+  int			   numBlocks;
 };
 
+typedef const struct _PQ_PARAM_SET  PQ_PARAM_SET;
 
 PQ_PARAM_SET *
 pq_get_param_set_by_id(PQ_PARAM_SET_ID id);

@@ -23,6 +23,15 @@
 #define CPQREF_PQNTRUSIGN_H_
 
 int
+challenge(
+    int8_t              *sp,
+    int8_t              *tp,
+    const size_t        public_key_len,
+    const unsigned char *public_key_blob,
+    const size_t        msg_len,
+    const unsigned char *msg);
+
+int
 pq_gen_key(
     PQ_PARAM_SET  *params,
     size_t        *privkey_blob_len,
@@ -49,5 +58,20 @@ pq_verify(
     const unsigned char *public_key_blob,
     const size_t        msg_len,
     const unsigned char *msg);
+
+int
+cuda_pq_sign(
+	size_t              *packed_sig_len,
+	unsigned char       *packed_sig,
+	const size_t        private_key_len,
+	const unsigned char *private_key_blob,
+	const size_t        public_key_len,
+	const unsigned char *public_key_blob,
+	const size_t        msg_len,
+	const unsigned char *msg
+	);
+
+void cuda_prep(PQ_PARAM_SET_ID id);
+void cuda_clean();
 
 #endif

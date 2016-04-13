@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "crypto_hash_sha512.h"
 
@@ -32,10 +33,13 @@
 #include "pol.h"
 
 #include "pqerror.h"
+ #include "pqntrusign.h"
 
 #define STATS 1
 
-static int
+//extern unsigned long int attempts;
+
+int
 challenge(
     int8_t              *sp,
     int8_t              *tp,
@@ -236,6 +240,9 @@ pq_sign(
             public_key_len, public_key_blob,
             msg_len, msg);
 
+  int64_t *t = (int64_t *)malloc(N*sizeof(int64_t));
+  int64_t *s = (int64_t *)malloc(N*sizeof(int64_t));
+
   do
   {
     error = 0;
@@ -269,7 +276,7 @@ pq_sign(
     {
       m = p * (a[i] + tmpx2[i]);
       error |= (m > P->B_s) || (-m > P->B_s);
-
+      s[i] = m;
       /* s0 = s0 + p*(a + tmpx2) = s0 + a*f */
       s0[i] += m;
 
@@ -283,13 +290,24 @@ pq_sign(
     {
       m = (a[i] + tmpx2[i]);
       error |= (m > P->B_t) || (-m > P->B_t);
-
+      t[i] = m;
       /* t0 = (a + tmpx2) - t0 + tp = a*g - tp + s0*h + tp = s0*h + a*g */
       t0[i] = m - t0[i] + tp[i];
       error |= (cmod(t0[i], p) - tp[i]); /* Not necessary to check this */
       error |= (t0[i] > P->norm_bound_t) || (-t0[i] > P->norm_bound_t) ;
     }
+
+
+//    attempts ++;
+
   } while(0 != error);
+
+  for (i=0; i<N; i++) {
+	  if (s[i] > P->B_s || -s[i] > P->B_s)
+		  printf("s\tholy shit\n");
+	  if (t[i] > P->B_t || -t[i] > P->B_t)
+		  printf("t\tholy shit\n");
+  }
 
   for(i=0; i<N; i++)
   {
@@ -365,27 +383,22 @@ pq_verify(
     return PQNTRU_ERROR;
   }
 
-  result = unpack_signature(P, sig, packed_sig_len, packed_sig);
+  challenge(sp, tp,
+            public_key_blob_len, public_key_blob,
+            msg_len, msg);
+
+  result = unpack_signature(P, sig, sp, packed_sig_len, packed_sig);
   if(PQNTRU_ERROR == result)
   {
     free(scratch);
     return PQNTRU_ERROR;
   }
 
-
-  challenge(sp, tp,
-            public_key_blob_len, public_key_blob,
-            msg_len, msg);
-
   for(i=0; i<N; i++)
   {
-    sig[i] = sig[i] - (P->q / (2*P->p));
-    sig[i] = sig[i] * P->p;
-    sig[i] = sig[i] + sp[i];
-    error |= (cmod(sig[i], p) - sp[i]);
+    error |= (cmod(sig[i] - sp[i], p));
     error |= (sig[i] > P->norm_bound_s) || (-sig[i] > P->norm_bound_s);
   }
-
   pol_mul_coefficients(tmpx3, sig, h, N, padN, q, tmpx3);
 
   for(i=0; i<N; i++)
@@ -393,6 +406,8 @@ pq_verify(
     error |= (cmod(tmpx3[i], p) - tp[i]);
     error |= (tmpx3[i] > P->norm_bound_t) || (-tmpx3[i] > P->norm_bound_t) ;
   }
+
+
 
   free(scratch);
 
@@ -548,6 +563,44 @@ pq_gen_key(
   {
     h[i] = cmod(h[i] + a2[i], q);
   }
+
+/*  int j;
+  for (i=0; i<d1; i++) {
+	  for (j=d1; j<2*d1; j++) {
+		  if (f[i] == f[j]) {
+			  printf("stupid key f: %d, %d, %d!\n", i, j, f[i]);
+			  break;
+		  }
+		  if (g[i] == g[j]) {
+			  printf("stupid key g: %d, %d, %d!\n", i, j, g[i]);
+			  break;
+		  }
+	  }
+  }
+  for (i=2*d1; i<2*d1+d2; i++) {
+	  for (j=2*d1+d2; j<2*(d1+d2); j++) {
+		  if (f[i] == f[j]) {
+			  printf("stupid key f: %d, %d, %d!\n", i, j, f[i]);
+			  break;
+		  }
+		  if (g[i] == g[j]) {
+			  printf("stupid key g: %d, %d, %d!\n", i, j, g[i]);
+			  break;
+		  }
+	  }
+  }
+  for (i=2*(d1+d2); i<2*(d1+d2)+d3; i++) {
+	  for (j=2*(d1+d2)+d3; j<2*(d1+d2+d3); j++) {
+		  if (f[i] == f[j]) {
+			  printf("stupid key f: %d, %d, %d!\n", i, j, f[i]);
+			  break;
+		  }
+		  if (g[i] == g[j]) {
+			  printf("stupid key g: %d, %d, %d!\n", i, j, g[i]);
+			  break;
+		  }
+	  }
+  }*/
 
   pack_public_key(P, h, public_key_blob_len, pubkey_blob);
 
