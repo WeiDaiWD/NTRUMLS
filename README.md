@@ -7,4 +7,4 @@ NTRU Modular Lattice Signature (NTRUMLS) Scheme on CUDA GPUs. Details and algori
 ## Developer
 The software is developed by [Vernam Group](http://v.wpi.edu/) and [Security Innovation](https://www.securityinnovation.com/).
 ## Acknowledgment
-Funding for this research was in part provided by the US National Science Foundation CNS Award #1319130.
+Vernam Group's work was in part provided by the US National Science Foundation CNS Award #1319130.
